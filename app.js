@@ -41,11 +41,11 @@ const ProductController = (function () {
         getData: function () {
             return data;
         },
-        getProductById : function(id){
+        getProductById: function (id) {
             let product = null
 
-            data.products.forEach(function(prd){
-                if(prd.id == id){
+            data.products.forEach(function (prd) {
+                if (prd.id == id) {
                     product = prd;
                 }
             })
@@ -53,10 +53,10 @@ const ProductController = (function () {
 
             return product;
         },
-        setCurrentProduct : function(product){
+        setCurrentProduct: function (product) {
             data.selectedProduct = product;
         },
-        getCurrentProduct : function(){
+        getCurrentProduct: function () {
             return data.selectedProduct;
         },
         addProduct: function (name, price) {
@@ -71,6 +71,27 @@ const ProductController = (function () {
             data.products.push(newProduct);
             return newProduct;
 
+        },
+        updateProduct: function (name, price) {
+            let product = null;
+
+            data.products.forEach(function (prd) {
+                if (prd.id == data.selectedProduct.id) {
+                    prd.name = name;
+                    prd.price = parseFloat(price);
+                    product = prd;
+                }
+            })
+
+            return product
+
+        },
+        deleteProduct: function (product) {
+            data.products.forEach(function (prd, index) {
+                if (prd.id == product.id) {
+                    data.products.splice(index, 1);
+                }
+            })
         },
         getTotal: function () {
             let total = 0;
@@ -94,10 +115,11 @@ const UIController = (function () {
     // Private
     const Selectors = {
         productList: "#item-list",
+        productListItems: '#item-list tr',
         addButton: ".addBtn",
-        updateButton : '.updateBtn',
-        deleteButton : '.deleteBtn',
-        cancelButton : '.cancelBtn',
+        updateButton: '.updateBtn',
+        deleteButton: '.deleteBtn',
+        cancelButton: '.cancelBtn',
         productName: "#productName",
         productPrice: "#productPrice",
         productCard: "#productCard",
@@ -146,9 +168,41 @@ const UIController = (function () {
             `;
             document.querySelector(Selectors.productList).innerHTML += item;
         },
-        clearInputs: function () {
+        updateProduct: function (prd) {
+
+            let updatedItem = null;
+            let items = document.querySelectorAll(Selectors.productListItems);
+
+            items.forEach(function (item) {
+                if (item.classList.contains('bg-warning')) {
+                    item.children[1].textContent = prd.name;
+                    item.children[2].textContent = prd.price + ' $';
+                    updatedItem = item;
+                }
+            })
+            return updatedItem;
+        },
+        deleteProduct: function () {
+
+            let items = document.querySelectorAll(Selectors.productListItems);
+            items.forEach(function (item) {
+                if (item.classList.contains('bg-warning')) {
+                    item.remove();
+                }
+            })
+        },
+        clearInputs: function (item) {
             document.querySelector(Selectors.productName).value = '';
             document.querySelector(Selectors.productPrice).value = '';
+        },
+        clearWarnings: function () {
+            let items = document.querySelectorAll(Selectors.productListItems);
+
+            items.forEach(function (item) {
+                if (item.classList.contains('bg-warning')) {
+                    item.classList.remove('bg-warning');
+                }
+            })
         },
         hideCard: function () {
             document.querySelector(Selectors.productCard).style.display = 'none';
@@ -158,32 +212,27 @@ const UIController = (function () {
             document.querySelector(Selectors.totalTL).textContent = total * 8, 44
 
         },
-        addProductToForm : function(){
+        addProductToForm: function () {
             const selectedProduct = ProductController.getCurrentProduct();
             document.querySelector(Selectors.productName).value = selectedProduct.name;
             document.querySelector(Selectors.productPrice).value = selectedProduct.price;
         },
-        addingState: function(){
+        addingState: function (item) {
+            UIController.clearWarnings();
             UIController.clearInputs();
             document.querySelector(Selectors.addButton).style.display = 'inline';
             document.querySelector(Selectors.updateButton).style.display = 'none';
             document.querySelector(Selectors.deleteButton).style.display = 'none';
             document.querySelector(Selectors.cancelButton).style.display = 'none';
         },
-        editState : function(tr){
-
-            const parent = tr.parentNode;
-
-            for(let i = 0; i<parent.children.length; i++){
-                parent.children[i].classList.remove('bg-warning');
-            }
+        editState: function (tr) {
 
             tr.classList.add('bg-warning');
             document.querySelector(Selectors.addButton).style.display = 'none';
             document.querySelector(Selectors.updateButton).style.display = 'inline';
             document.querySelector(Selectors.deleteButton).style.display = 'inline';
             document.querySelector(Selectors.cancelButton).style.display = 'inline';
-        }   
+        }
     }
 
 })()
@@ -200,9 +249,17 @@ const App = (function (ProductCtrl, UICtrl,) {
         //add product event
         document.querySelector(UISelectors.addButton).addEventListener('click', productAddSubmit);
 
-        // edit Product
-        document.querySelector(UISelectors.productList).addEventListener('click', productEditSubmit);
+        // edit Product click
+        document.querySelector(UISelectors.productList).addEventListener('click', productEditClick);
 
+        // edit Product Submit 
+        document.querySelector(UISelectors.updateButton).addEventListener('click', editProductSubmit);
+
+        // cancel button click
+        document.querySelector(UISelectors.cancelButton).addEventListener('click', cancelUpdate);
+
+        // delete button click
+        document.querySelector(UISelectors.deleteButton).addEventListener('click', deleteProductSubmit);
     }
     const productAddSubmit = function (e) {
         const productName = document.querySelector(UISelectors.productName).value;
@@ -228,25 +285,80 @@ const App = (function (ProductCtrl, UICtrl,) {
 
         e.preventDefault();
     }
-
-    const productEditSubmit = function (e) {
-        if(e.target.classList.contains('edit-product')){
+    const productEditClick = function (e) {
+        if (e.target.classList.contains('edit-product')) {
             const id = e.target.parentNode.previousElementSibling.previousElementSibling.previousElementSibling.previousElementSibling.textContent
 
             // get selected product
             const product = ProductCtrl.getProductById(id);
 
-
             // set current product
             ProductCtrl.setCurrentProduct(product);
-
+            UICtrl.clearWarnings();
             // add product to UI
             UICtrl.addProductToForm();
-            
+
             UICtrl.editState(e.target.parentNode.parentNode);
         }
 
 
+
+        e.preventDefault();
+    }
+    const editProductSubmit = function (e) {
+        const productName = document.querySelector(UISelectors.productName).value;
+        const productPrice = document.querySelector(UISelectors.productPrice).value;
+
+        if (productName !== '' && productPrice !== '') {
+
+            //update product
+
+            let updatedProduct = ProductCtrl.updateProduct(productName, productPrice);
+
+            // update UI
+            let item = UICtrl.updateProduct(updatedProduct);
+
+            // get total
+            const total = ProductCtrl.getTotal();
+
+            //show Total
+            UICtrl.showTotal(total);
+
+            UICtrl.addingState();
+
+        }
+
+
+        e.preventDefault();
+    }
+    const cancelUpdate = function (e) {
+        UICtrl.addingState();
+        UICtrl.clearWarnings();
+
+        e.preventDefault();
+    }
+    const deleteProductSubmit = function (e) {
+        // get selected product
+
+        const selectedProduct = ProductCtrl.getCurrentProduct();
+
+        // delete product
+        ProductCtrl.deleteProduct(selectedProduct);
+
+        //delete UI
+        UICtrl.deleteProduct();
+
+        // get total
+        const total = ProductCtrl.getTotal();
+
+        //show Total
+        UICtrl.showTotal(total);
+
+        UICtrl.addingState();
+
+        if(total ==0){
+            UICtrl.hideCard();
+        }
 
         e.preventDefault();
     }
