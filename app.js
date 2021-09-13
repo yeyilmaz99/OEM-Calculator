@@ -41,6 +41,24 @@ const ProductController = (function () {
         getData: function () {
             return data;
         },
+        getProductById : function(id){
+            let product = null
+
+            data.products.forEach(function(prd){
+                if(prd.id == id){
+                    product = prd;
+                }
+            })
+
+
+            return product;
+        },
+        setCurrentProduct : function(product){
+            data.selectedProduct = product;
+        },
+        getCurrentProduct : function(){
+            return data.selectedProduct;
+        },
         addProduct: function (name, price) {
             let id;
 
@@ -53,7 +71,17 @@ const ProductController = (function () {
             data.products.push(newProduct);
             return newProduct;
 
+        },
+        getTotal: function () {
+            let total = 0;
+
+            data.products.forEach(function (item) {
+                total += item.price;
+            });
+            data.totalPrice = total;
+            return data.totalPrice;
         }
+
     }
 
 
@@ -67,9 +95,14 @@ const UIController = (function () {
     const Selectors = {
         productList: "#item-list",
         addButton: ".addBtn",
+        updateButton : '.updateBtn',
+        deleteButton : '.deleteBtn',
+        cancelButton : '.cancelBtn',
         productName: "#productName",
         productPrice: "#productPrice",
-        productCard: "#productCard"
+        productCard: "#productCard",
+        totalTL: '#total-tl',
+        totalDollar: '#total-dollar'
     }
 
     // Public
@@ -84,9 +117,7 @@ const UIController = (function () {
                         <td>${prd.name}</td>
                         <td>${prd.price}</td>
                         <td align="right">
-                            <button  type="submit" class="btn btn-warning btn-sm d-grid gap-2">
-                                <i class="far fa-edit"></i>
-                            </button>
+                                <i class="far fa-edit edit-product"></i>
                         </td>
                     </tr>
                 `
@@ -100,16 +131,15 @@ const UIController = (function () {
             return Selectors;
         },
         addProduct: function (prd) {
-            document.querySelector(Selectors.productCard).style.display='block';
+            document.querySelector(Selectors.productCard).style.display = 'block';
             var item = `
                     <tr style="text-align: center;">
                         <td>${prd.id}</td>
                         <td>${prd.name}</td>
                         <td>${prd.price}</td>
                         <td align="right">
-                            <button type="submit" class="btn btn-warning btn-sm d-grid gap-2">
-                                <i class="far fa-edit"></i>
-                            </button>
+                        <td align="right">
+                                <i class="far fa-edit edit-product"></i>
                         </td>
                     </tr>
     
@@ -122,7 +152,38 @@ const UIController = (function () {
         },
         hideCard: function () {
             document.querySelector(Selectors.productCard).style.display = 'none';
-        }
+        },
+        showTotal: function (total) {
+            document.querySelector(Selectors.totalDollar).textContent = total;
+            document.querySelector(Selectors.totalTL).textContent = total * 8, 44
+
+        },
+        addProductToForm : function(){
+            const selectedProduct = ProductController.getCurrentProduct();
+            document.querySelector(Selectors.productName).value = selectedProduct.name;
+            document.querySelector(Selectors.productPrice).value = selectedProduct.price;
+        },
+        addingState: function(){
+            UIController.clearInputs();
+            document.querySelector(Selectors.addButton).style.display = 'inline';
+            document.querySelector(Selectors.updateButton).style.display = 'none';
+            document.querySelector(Selectors.deleteButton).style.display = 'none';
+            document.querySelector(Selectors.cancelButton).style.display = 'none';
+        },
+        editState : function(tr){
+
+            const parent = tr.parentNode;
+
+            for(let i = 0; i<parent.children.length; i++){
+                parent.children[i].classList.remove('bg-warning');
+            }
+
+            tr.classList.add('bg-warning');
+            document.querySelector(Selectors.addButton).style.display = 'none';
+            document.querySelector(Selectors.updateButton).style.display = 'inline';
+            document.querySelector(Selectors.deleteButton).style.display = 'inline';
+            document.querySelector(Selectors.cancelButton).style.display = 'inline';
+        }   
     }
 
 })()
@@ -139,6 +200,8 @@ const App = (function (ProductCtrl, UICtrl,) {
         //add product event
         document.querySelector(UISelectors.addButton).addEventListener('click', productAddSubmit);
 
+        // edit Product
+        document.querySelector(UISelectors.productList).addEventListener('click', productEditSubmit);
 
     }
     const productAddSubmit = function (e) {
@@ -152,6 +215,12 @@ const App = (function (ProductCtrl, UICtrl,) {
             // add item to list
             UICtrl.addProduct(newProduct);
 
+            // get total
+            const total = ProductController.getTotal();
+
+            //show Total
+            UICtrl.showTotal(total);
+
             // clear inputs
 
             UICtrl.clearInputs();
@@ -160,9 +229,33 @@ const App = (function (ProductCtrl, UICtrl,) {
         e.preventDefault();
     }
 
+    const productEditSubmit = function (e) {
+        if(e.target.classList.contains('edit-product')){
+            const id = e.target.parentNode.previousElementSibling.previousElementSibling.previousElementSibling.previousElementSibling.textContent
+
+            // get selected product
+            const product = ProductCtrl.getProductById(id);
+
+
+            // set current product
+            ProductCtrl.setCurrentProduct(product);
+
+            // add product to UI
+            UICtrl.addProductToForm();
+            
+            UICtrl.editState(e.target.parentNode.parentNode);
+        }
+
+
+
+        e.preventDefault();
+    }
+
     return {
         init: function () {
-            console.log('starting app..')
+            console.log('starting app..');
+
+            UICtrl.addingState();
             const products = ProductCtrl.getProducts();
 
             if (products.length == 0) {
