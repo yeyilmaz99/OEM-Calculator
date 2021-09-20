@@ -6,7 +6,48 @@ const StorageController = (function () {
 
     // Public
     return {
+        storeProduct: function(product){
 
+            let products;
+
+            if(localStorage.getItem('products')=== null){
+                products = [];
+                products.push(product);
+            }else{
+                products = JSON.parse(localStorage.getItem('products'));
+                products.push(product);
+            }
+            localStorage.setItem('products',JSON.stringify(products));
+        },
+        getProducts: function(){
+            let products;
+            if(localStorage.getItem('products')===null){
+                products = [];
+            }else{
+                products = JSON.parse(localStorage.getItem('products'));
+            }  
+            return products;
+        },
+        updateProductLS: function(product){
+            let products = JSON.parse(localStorage.getItem('products'));
+
+            products.forEach(function(prd,index){
+                if(product.id == prd.id){
+                    products.splice(index,1,product)
+                }
+            });
+            localStorage.setItem('products',JSON.stringify(products));
+        },
+        deleteProductLS: function(id){
+            let products = JSON.parse(localStorage.getItem('products'));
+
+            products.forEach(function(prd,index){
+                if(id == prd.id){
+                    products.splice(index,1)
+                }
+            });
+            localStorage.setItem('products',JSON.stringify(products));
+        }
     }
 
 
@@ -25,9 +66,7 @@ const ProductController = (function () {
     }
 
     const data = {
-        products: [
-
-        ],
+        products: StorageController.getProducts(),
         selectedProduct: null,
         totalPrice: 0
     }
@@ -239,7 +278,7 @@ const UIController = (function () {
 
 
 // App Controller
-const App = (function (ProductCtrl, UICtrl,) {
+const App = (function (ProductCtrl, UICtrl, StorageCtrl) {
 
     const UISelectors = UICtrl.getSelectors();
 
@@ -272,6 +311,9 @@ const App = (function (ProductCtrl, UICtrl,) {
             // add item to list
             UICtrl.addProduct(newProduct);
 
+            // add product to Local storage
+            StorageCtrl.storeProduct(newProduct);
+
             // get total
             const total = ProductController.getTotal();
 
@@ -287,7 +329,7 @@ const App = (function (ProductCtrl, UICtrl,) {
     }
     const productEditClick = function (e) {
         if (e.target.classList.contains('edit-product')) {
-            const id = e.target.parentNode.previousElementSibling.previousElementSibling.previousElementSibling.previousElementSibling.textContent
+            const id = e.target.parentNode.previousElementSibling.previousElementSibling.previousElementSibling.textContent
 
             // get selected product
             const product = ProductCtrl.getProductById(id);
@@ -317,6 +359,9 @@ const App = (function (ProductCtrl, UICtrl,) {
 
             // update UI
             let item = UICtrl.updateProduct(updatedProduct);
+
+            // update storage
+            StorageCtrl.updateProductLS(updatedProduct);
 
             // get total
             const total = ProductCtrl.getTotal();
@@ -353,6 +398,9 @@ const App = (function (ProductCtrl, UICtrl,) {
 
         //show Total
         UICtrl.showTotal(total);
+        
+        // delete from LS
+        StorageCtrl.deleteProductLS(selectedProduct.id);
 
         UICtrl.addingState();
 
@@ -383,7 +431,7 @@ const App = (function (ProductCtrl, UICtrl,) {
     }
 
 
-})(ProductController, UIController)
+})(ProductController, UIController, StorageController)
 
 
 App.init();
